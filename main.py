@@ -41,7 +41,10 @@ from urllib3.util.retry import Retry
 
 # Отключим предупреждения SSL
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
+# ======== ДЛЯ WEB-СЕРВЕРА (ЧТОБЫ RENDER НЕ РУГАЛСЯ) ========
+from flask import Flask
+from threading import Thread
+import os
 # Настройка логирования
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -1183,5 +1186,34 @@ def main():
         print(f"❌ Критическая ошибка: {e}")
 
 
+# ======== СОЗДАЕМ ПРОСТОЙ WEB-СЕРВЕР ========
+web_app = Flask(__name__)
+
+
+@web_app.route('/')
+def home():
+    return "🤖 Telegram Bot is running and monitoring sites!"
+
+
+# ======== ЗАПУСКАЕМ БОТА И WEB-СЕРВЕР ========
+def run_bot():
+    """Запускает Telegram бота"""
+    print("🤖 Запуск Telegram бота...")
+    main()  # Это запускает твоего обычного бота
+
+
+def run_web_server():
+    """Запускает веб-сервер для Render"""
+    port = int(os.environ.get("PORT", 8080))  # Render сам скажет, какой порт использовать
+    print(f"🚀 Веб-сервер запущен на порту {port}")
+    web_app.run(host="0.0.0.0", port=port)
+
+
 if __name__ == "__main__":
-    main()
+    # Запускаем бота в отдельном потоке (чтобы он не мешал веб-серверу)
+    bot_thread = Thread(target=run_bot)
+    bot_thread.daemon = True  # Это значит: если главная программа завершится, бот тоже завершится
+    bot_thread.start()
+
+    # Запускаем веб-сервер (это главный процесс, который будет работать всегда)
+    run_web_server()
